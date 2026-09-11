@@ -413,6 +413,7 @@
    ============================================================ */
 const CONFIG = {
   RPC_URL: "https://mainnet.helius-rpc.com/?api-key=f49042a7-664f-4a98-85a5-67922d06628d", // swap to your Helius/QuickNode URL when the free public RPC gets rate-limited
+  JUPITER_API_KEY: "jup_0587bbe65726d0df01667d4360e88325bba4c2eff8718f3089e83df5125797cb",       // free key from https://developers.jup.ag/portal — needed for token price data
   CONTRACT_ADDRESS: "",      // paste the $BAG mint address, e.g. "7xKXtg2CW87..."
   BUY_LINK: "",              // Jupiter/Raydium swap link once there's liquidity
   TWITTER_LINK: "https://twitter.com/BagScoreSOL",
@@ -451,7 +452,7 @@ function handleBuyClick(){
   else{ document.getElementById("token").scrollIntoView({behavior:"smooth"}); }
 }
 
-const SOL_MINT = "So11111111111111111111111111111111111111";
+const SOL_MINT = "So11111111111111111111111111111111111111112";
 const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 
 function shortAddr(a){ return a.slice(0,4) + "…" + a.slice(-4); }
@@ -486,10 +487,12 @@ async function getTokenMeta(mint){
 
 async function getPrices(ids){
   try{
-    const res = await fetch("https://api.jup.ag/price/v2?ids=" + ids.join(","));
+    const res = await fetch("https://api.jup.ag/price/v3?ids=" + ids.join(","), {
+      headers: { "x-api-key": CONFIG.JUPITER_API_KEY }
+    });
     if(!res.ok) return {};
     const json = await res.json();
-    return json.data || {};
+    return json || {};
   }catch(e){ return {}; }
 }
 
@@ -515,7 +518,7 @@ async function analyzeWallet(){
   try{
     // 1. SOL balance
     const balanceResult = await rpcCall("getBalance", [addr]);
-const solBalance = balanceResult.value / 1e9;
+    const solBalance = balanceResult.value / 1e9;
 
     // 2. Token accounts
     const tokenAccountsResult = await rpcCall("getTokenAccountsByOwner", [
@@ -542,11 +545,11 @@ const solBalance = balanceResult.value / 1e9;
     // 4. Prices
     const idsToPrice = [SOL_MINT, ...holdings.map(h=>h.mint)].slice(0,100);
     const priceData = await getPrices(idsToPrice);
-    const solPrice = priceData[SOL_MINT] ? parseFloat(priceData[SOL_MINT].price) : null;
+    const solPrice = priceData[SOL_MINT] ? Number(priceData[SOL_MINT].usdPrice) : null;
 
     holdings.forEach(h=>{
       const p = priceData[h.mint];
-      h.price = p ? parseFloat(p.price) : null;
+      h.price = p ? Number(p.usdPrice) : null;
       h.value = h.price !== null ? h.price * h.amount : null;
     });
 
