@@ -514,8 +514,8 @@ async function analyzeWallet(){
 
   try{
     // 1. SOL balance
-    const balanceLamports = await rpcCall("getBalance", [addr]);
-    const solBalance = balanceLamports / 1e9;
+    const balanceResult = await rpcCall("getBalance", [addr]);
+const solBalance = balanceResult.value / 1e9;
 
     // 2. Token accounts
     const tokenAccountsResult = await rpcCall("getTokenAccountsByOwner", [
