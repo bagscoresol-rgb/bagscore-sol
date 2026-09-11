@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BagScore SOL — How Bad Is Your Bag?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#050507;
+    --bg-panel:#0c0c14;
+    --bg-panel-2:#111120;
+    --border:#1f2033;
+    --cyan:#39f2e0;
+    --purple:#a855f7;
+    --pink:#ff5da2;
+    --text:#eef0fb;
+    --text-dim:#8d90ac;
+    --text-faint:#5c5f78;
+    --good:#39f2a0;
+    --warn:#ffc85e;
+    --bad:#ff5c7c;
+    --radius:18px;
+    --font-display:'Space Grotesk', sans-serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    line-height:1.5;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:'';
+    position:fixed; inset:0;
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -5%, rgba(57,242,224,0.10), transparent 60%),
+      radial-gradient(ellipse 900px 600px at 90% 10%, rgba(168,85,247,0.12), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 50% 100%, rgba(255,93,162,0.06), transparent 60%);
+    pointer-events:none;
+    z-index:0;
+  }
+  .bg-grid{
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size:42px 42px;
+    mask-image:radial-gradient(ellipse 100% 60% at 50% 0%, black, transparent 75%);
+    pointer-events:none;
+    z-index:0;
+  }
+  a{color:inherit; text-decoration:none;}
+  .wrap{max-width:1120px; margin:0 auto; padding:0 24px; position:relative; z-index:1;}
+  ::selection{background:var(--cyan); color:#000;}
+
+  /* ---------- header ---------- */
+  header{
+    position:sticky; top:0; z-index:50;
+    backdrop-filter:blur(14px);
+    background:rgba(5,5,7,0.7);
+    border-bottom:1px solid var(--border);
+  }
+  .nav{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 24px; max-width:1120px; margin:0 auto;
+  }
+  .brand{display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:700; font-size:18px; letter-spacing:-0.02em;}
+  .brand-icon{
+    width:34px; height:34px; border-radius:10px;
+    background:linear-gradient(145deg, var(--cyan), var(--purple));
+    display:flex; align-items:center; justify-content:center;
+    font-size:17px;
+    box-shadow:0 0 20px rgba(57,242,224,0.35);
+  }
+  .brand small{display:block; font-family:var(--font-body); font-weight:500; font-size:10px; color:var(--text-dim); letter-spacing:0.04em;}
+  .nav-links{display:flex; gap:32px; align-items:center;}
+  .nav-links a{font-size:14.5px; color:var(--text-dim); font-weight:500; transition:color .15s;}
+  .nav-links a:hover{color:var(--text);}
+  .btn-buy{
+    padding:9px 20px; border-radius:100px; font-size:14px; font-weight:600;
+    background:linear-gradient(90deg, var(--cyan), var(--purple)); color:#04060a;
+    border:none; cursor:pointer; white-space:nowrap;
+  }
+  .nav-mobile-hide{display:flex;}
+  @media (max-width:760px){ .nav-mobile-hide{display:none;} }
+
+  /* ---------- hero ---------- */
+  .hero{padding:76px 0 40px; text-align:center; position:relative;}
+  .eyebrow-pill{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:6px 14px; border-radius:100px; font-size:12.5px; font-weight:500;
+    background:var(--bg-panel); border:1px solid var(--border); color:var(--text-dim);
+    margin-bottom:26px;
+  }
+  .eyebrow-pill .dot{width:6px; height:6px; border-radius:50%; background:var(--good); box-shadow:0 0 8px var(--good);}
+  h1.headline{
+    font-family:var(--font-display); font-weight:700; letter-spacing:-0.03em;
+    font-size:clamp(2.4rem, 6.4vw, 4.6rem); line-height:1.02;
+    background:linear-gradient(120deg, #fff 30%, var(--cyan) 65%, var(--purple) 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .sub{
+    max-width:520px; margin:22px auto 0; color:var(--text-dim); font-size:17px;
+  }
+  .analyzer-box{
+    max-width:560px; margin:40px auto 0;
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:10px;
+    box-shadow:0 30px 60px -30px rgba(0,0,0,0.6);
+  }
+  .analyzer-row{display:flex; gap:8px;}
+  #wallet-input{
+    flex:1; background:var(--bg-panel-2); border:1px solid var(--border); border-radius:14px;
+    padding:16px 18px; color:var(--text); font-family:var(--font-mono); font-size:14px;
+    outline:none;
+  }
+  #wallet-input:focus{border-color:var(--cyan);}
+  #wallet-input::placeholder{color:var(--text-faint); font-family:var(--font-body);}
+  .btn-check{
+    padding:0 24px; border-radius:14px; border:none; cursor:pointer;
+    background:linear-gradient(90deg, var(--cyan), var(--purple));
+    color:#04060a; font-weight:700; font-size:14.5px; white-space:nowrap;
+    transition:transform .12s, opacity .12s;
+  }
+  .btn-check:hover{transform:translateY(-1px);}
+  .btn-check:disabled{opacity:.5; cursor:wait; transform:none;}
+  .trust-line{
+    display:flex; justify-content:center; gap:22px; margin-top:16px; flex-wrap:wrap;
+    font-size:12.5px; color:var(--text-faint);
+  }
+  .trust-line span{display:flex; align-items:center; gap:6px;}
+  .error-msg{
+    max-width:560px; margin:14px auto 0; padding:12px 16px; border-radius:12px;
+    background:rgba(255,92,124,0.08); border:1px solid rgba(255,92,124,0.35);
+    color:var(--bad); font-size:13.5px; display:none;
+  }
+
+  /* ---------- feature cards ---------- */
+  .features{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:76px;
+  }
+  @media (max-width:820px){ .features{grid-template-columns:repeat(2,1fr);} }
+  .feat-card{
+    background:var(--bg-panel); border:1px solid var(--border); border-radius:16px;
+    padding:24px 20px;
+  }
+  .feat-icon{font-size:22px; margin-bottom:14px;}
+  .feat-card h3{font-family:var(--font-display); font-size:15px; font-weight:600; margin-bottom:6px; letter-spacing:0.01em;}
+  .feat-card p{font-size:13.5px; color:var(--text-dim);}
+
+  /* ---------- how it works ---------- */
+  .section-head{text-align:center; max-width:520px; margin:0 auto 44px;}
+  .section-head h2{font-family:var(--font-display); font-size:clamp(1.6rem,3vw,2.2rem); font-weight:700; letter-spacing:-0.02em;}
+  .section-head p{color:var(--text-dim); margin-top:10px; font-size:15px;}
+  section{padding:100px 0;}
+  .steps{display:grid; grid-template-columns:repeat(3,1fr); gap:20px;}
+  @media (max-width:760px){ .steps{grid-template-columns:1fr;} }
+  .step{
+    border:1px solid var(--border); border-radius:16px; padding:26px 22px;
+    background:linear-gradient(180deg, var(--bg-panel), transparent);
+  }
+  .step .num{font-family:var(--font-mono); color:var(--cyan); font-size:13px; margin-bottom:12px;}
+  .step h4{font-family:var(--font-display); font-size:17px; margin-bottom:8px;}
+  .step p{color:var(--text-dim); font-size:14px;}
+  .steps-foot{text-align:center; margin-top:30px; color:var(--text-faint); font-size:13.5px;}
+
+  /* ---------- results ---------- */
+  #results{display:none; padding-top:20px;}
+  .results-inner{max-width:900px; margin:0 auto;}
+  .score-hero{
+    text-align:center; padding:48px 24px; border-radius:24px;
+    background:radial-gradient(ellipse 100% 100% at 50% 0%, rgba(168,85,247,0.14), transparent 70%), var(--bg-panel);
+    border:1px solid var(--border); margin-bottom:22px; position:relative; overflow:hidden;
+  }
+  .score-label{font-size:13px; color:var(--text-dim); letter-spacing:0.08em; font-weight:600;}
+  .score-num{
+    font-family:var(--font-display); font-weight:700; font-size:88px; line-height:1;
+    margin:14px 0 4px;
+    background:linear-gradient(120deg, var(--cyan), var(--purple));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .score-num span{font-size:32px; color:var(--text-faint); -webkit-text-fill-color:var(--text-faint);}
+  .score-tier{font-family:var(--font-display); font-size:20px; font-weight:600; margin-bottom:8px;}
+  .score-desc{color:var(--text-dim); font-size:14.5px; max-width:380px; margin:0 auto;}
+  .wallet-chip{
+    display:inline-block; margin-top:16px; padding:6px 14px; border-radius:100px;
+    background:var(--bg-panel-2); border:1px solid var(--border); font-family:var(--font-mono);
+    font-size:12px; color:var(--text-dim);
+  }
+
+  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px;}
+  @media (max-width:700px){ .stat-grid{grid-template-columns:repeat(2,1fr);} }
+  .stat-card{background:var(--bg-panel); border:1px solid var(--border); border-radius:16px; padding:18px;}
+  .stat-card .label{font-size:12px; color:var(--text-faint); margin-bottom:8px;}
+  .stat-card .value{font-family:var(--font-display); font-size:22px; font-weight:700;}
+
+  .panel{background:var(--bg-panel); border:1px solid var(--border); border-radius:18px; padding:24px; margin-bottom:20px;}
+  .panel h3{font-family:var(--font-display); font-size:16px; margin-bottom:16px;}
+  .bar-row{display:flex; align-items:center; gap:12px; margin-bottom:12px; font-size:13.5px;}
+  .bar-row .name{width:110px; flex-shrink:0; color:var(--text-dim); font-family:var(--font-mono); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .bar-track{flex:1; height:10px; background:var(--bg-panel-2); border-radius:6px; overflow:hidden;}
+  .bar-fill{height:100%; border-radius:6px; background:linear-gradient(90deg, var(--cyan), var(--purple));}
+  .bar-pct{width:48px; text-align:right; font-family:var(--font-mono); font-size:12.5px; color:var(--text-dim);}
+
+  .health-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px;}
+  @media (max-width:700px){ .health-grid{grid-template-columns:repeat(2,1fr);} }
+  .health-item{background:var(--bg-panel-2); border:1px solid var(--border); border-radius:14px; padding:16px;}
+  .health-item .label{font-size:12px; color:var(--text-faint); margin-bottom:8px;}
+  .health-item .val{font-family:var(--font-display); font-size:17px; font-weight:600;}
+  .pill{display:inline-block; padding:3px 10px; border-radius:100px; font-size:11.5px; font-weight:600; font-family:var(--font-body);}
+  .pill.good{background:rgba(57,242,160,0.12); color:var(--good);}
+  .pill.warn{background:rgba(255,200,94,0.12); color:var(--warn);}
+  .pill.bad{background:rgba(255,92,124,0.12); color:var(--bad);}
+
+  .roast-box{
+    background:linear-gradient(180deg, rgba(168,85,247,0.08), transparent), var(--bg-panel);
+    border:1px solid var(--border); border-radius:18px; padding:26px; margin-bottom:20px;
+  }
+  .roast-box h3{font-family:var(--font-display); font-size:16px; margin-bottom:14px; display:flex; align-items:center; gap:8px;}
+  .roast-lines{display:flex; flex-direction:column; gap:9px; font-size:14.5px; color:var(--text); margin-bottom:16px;}
+  .roast-verdict{
+    border-top:1px dashed var(--border); padding-top:14px; margin-top:4px;
+    font-family:var(--font-display); font-size:15.5px; color:var(--cyan);
+  }
+
+  .share-row{display:flex; gap:12px; flex-wrap:wrap; margin-top:6px;}
+  .btn-secondary{
+    flex:1; min-width:160px; padding:13px 18px; border-radius:14px; border:1px solid var(--border);
+    background:var(--bg-panel-2); color:var(--text); font-weight:600; font-size:14px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .btn-secondary.primary{background:linear-gradient(90deg, var(--cyan), var(--purple)); color:#04060a; border:none;}
+
+  #share-canvas{display:none;}
+  .note-line{font-size:12.5px; color:var(--text-faint); text-align:center; margin-top:16px;}
+
+  /* ---------- token section ---------- */
+  .token-hero{padding:70px 0; text-align:center;}
+  .token-panel{
+    max-width:640px; margin:0 auto; background:var(--bg-panel); border:1px solid var(--border);
+    border-radius:20px; padding:36px 28px;
+  }
+  .token-ticker{
+    font-family:var(--font-display); font-size:15px; color:var(--cyan); font-weight:700; margin-bottom:10px;
+  }
+  .token-row{display:flex; justify-content:space-between; padding:12px 0; border-top:1px solid var(--border); font-size:13.5px;}
+  .token-row:first-of-type{border-top:none;}
+  .token-row .k{color:var(--text-faint);}
+  .token-row .v{font-family:var(--font-mono); color:var(--text-dim);}
+
+  /* ---------- trust ---------- */
+  .trust-section{padding:60px 0;}
+  .trust-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){ .trust-grid{grid-template-columns:1fr;} }
+  .trust-card{
+    border:1px solid var(--border); border-radius:16px; padding:20px 22px; font-size:13.5px; color:var(--text-dim);
+    background:var(--bg-panel);
+  }
+  .trust-card b{color:var(--text); display:block; margin-bottom:6px; font-family:var(--font-display); font-size:14.5px; font-weight:600;}
+
+  footer{border-top:1px solid var(--border); padding:36px 0; text-align:center; color:var(--text-faint); font-size:13px;}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+
+<header>
+  <div class="nav">
+    <div class="brand">
+      <div class="brand-icon">👜</div>
+      <div>BagScore SOL<small>HOW BAD IS YOUR BAG?</small></div>
+    </div>
+    <nav class="nav-links nav-mobile-hide">
+      <a href="#analyze">Analyze</a>
+      <a href="#how">How It Works</a>
+      <a href="#token">$BAG</a>
+    </nav>
+    <button class="btn-buy" id="nav-buy-btn" onclick="handleBuyClick()">Buy $BAG</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero" id="analyze">
+    <div class="eyebrow-pill"><span class="dot"></span> Live on Solana mainnet</div>
+    <h1 class="headline">HOW BAD IS<br>YOUR BAG?</h1>
+    <p class="sub">Paste any public Solana wallet. We'll read the chain, score your bag out of 100, and roast you accordingly.</p>
+
+    <div class="analyzer-box">
+      <div class="analyzer-row">
+        <input id="wallet-input" type="text" placeholder="Paste Solana wallet address..." autocomplete="off" spellcheck="false">
+        <button class="btn-check" id="check-btn" onclick="analyzeWallet()">CHECK MY BAG →</button>
+      </div>
+    </div>
+    <div class="error-msg" id="error-box"></div>
+    <div class="trust-line">
+      <span>🔒 No wallet connection required</span>
+      <span>👀 Public blockchain data only</span>
+    </div>
+  </section>
+
+  <div class="features">
+    <div class="feat-card"><div class="feat-icon">💰</div><h3>Portfolio</h3><p>See what you're actually holding.</p></div>
+    <div class="feat-card"><div class="feat-icon">📊</div><h3>Bag Score</h3><p>Get your wallet score out of 100.</p></div>
+    <div class="feat-card"><div class="feat-icon">🔥</div><h3>Roast My Bag</h3><p>Find out what your wallet says about you.</p></div>
+    <div class="feat-card"><div class="feat-icon">📤</div><h3>Share</h3><p>Turn your score into a shareable card.</p></div>
+  </div>
+
+  <!-- RESULTS -->
+  <section id="results">
+    <div class="results-inner">
+
+      <div class="score-hero">
+        <div class="score-label">YOUR BAG SCORE</div>
+        <div class="score-num" id="score-value">0<span>/100</span></div>
+        <div class="score-tier" id="score-tier">—</div>
+        <div class="score-desc" id="score-desc"></div>
+        <div class="wallet-chip" id="wallet-chip"></div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card"><div class="label">PORTFOLIO VALUE</div><div class="value" id="stat-value">—</div></div>
+        <div class="stat-card"><div class="label">SOL BALANCE</div><div class="value" id="stat-sol">—</div></div>
+        <div class="stat-card"><div class="label">TOKENS</div><div class="value" id="stat-tokens">—</div></div>
+        <div class="stat-card"><div class="label">BIGGEST BAG</div><div class="value" id="stat-biggest">—</div></div>
+      </div>
+
+      <div class="panel">
+        <h3>Portfolio Breakdown</h3>
+        <div id="breakdown-bars"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Bag Health</h3>
+        <div class="health-grid" id="health-grid"></div>
+      </div>
+
+      <div class="roast-box">
+        <h3>🔥 Roast My Bag</h3>
+        <div class="roast-lines" id="roast-lines"></div>
+        <div class="roast-verdict" id="roast-verdict"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Share Your Bag</h3>
+        <div class="share-row">
+          <button class="btn-secondary primary" onclick="downloadShareCard()">📤 Download Share Card</button>
+          <button class="btn-secondary" onclick="shareOnX()">Share on X</button>
+        </div>
+        <canvas id="share-canvas" width="1000" height="1000"></canvas>
+      </div>
+
+      <div class="note-line">Winners/losers require historical cost-basis data we can't verify on-chain yet — so we're not showing made-up P&L. Current holdings and pricing above are live.</div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="section-head">
+      <h2>How it works</h2>
+      <p>No sign-up. No wallet connect. Just paste and go.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="num">01</div><h4>Paste</h4><p>Drop any public Solana wallet address into the box above.</p></div>
+      <div class="step"><div class="num">02</div><h4>Analyze</h4><p>We read publicly available blockchain data — balances, holdings, prices.</p></div>
+      <div class="step"><div class="num">03</div><h4>Get your score</h4><p>See your portfolio, your Bag Score, and get roasted.</p></div>
+    </div>
+    <div class="steps-foot">No wallet connection. No private keys. Ever.</div>
+  </section>
+
+  <section id="token" class="token-hero">
+    <div class="section-head">
+      <h2>MEET $BAG</h2>
+      <p>The community token behind BagScore SOL.</p>
+    </div>
+    <div class="token-panel">
+      <div class="token-ticker">$BAG · SOLANA</div>
+      <div class="token-row"><span class="k">Contract address</span><span class="v" id="token-contract">Coming at launch</span></div>
+      <div class="token-row"><span class="k">Chain</span><span class="v">Solana</span></div>
+      <div class="token-row"><span class="k">Status</span><span class="v" id="token-status">Pre-launch</span></div>
+      <div class="share-row" id="token-links-row" style="margin-top:18px; display:none;"></div>
+    </div>
+  </section>
+
+  <section class="trust-section">
+    <div class="section-head">
+      <h2>Trust &amp; safety</h2>
+    </div>
+    <div class="trust-grid">
+      <div class="trust-card"><b>We only need your public wallet address.</b>That's a wallet's public key — not a secret. Anyone can already see this data on a block explorer; we just make it readable.</div>
+      <div class="trust-card"><b>Never enter your seed phrase or private key anywhere.</b>Not here, not anywhere. BagScore SOL will never ask, and never needs to.</div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  BagScore SOL — Paste your wallet. Get your score. Get roasted. Not financial advice.
+</footer>
+
+<script>
+/* ============================================================
+   ✏️ EDIT THIS BLOCK WHEN $BAG LAUNCHES OR CHANGES.
+   Nothing else in this file needs to be touched — fill these
+   in, save, re-upload to Vercel. That's it.
+   ============================================================ */
+const CONFIG = {
+  RPC_URL: "https://api.mainnet-beta.solana.com", // swap to your Helius/QuickNode URL when the free public RPC gets rate-limited
+  CONTRACT_ADDRESS: "",      // paste the $BAG mint address, e.g. "7xKXtg2CW87..."
+  BUY_LINK: "",              // Jupiter/Raydium swap link once there's liquidity
+  TWITTER_LINK: "https://twitter.com/BagScoreSOL",
+  TELEGRAM_LINK: "",         // optional — leave blank to hide the button
+  STATUS_TEXT: "Pre-launch"  // change to "Live" once $BAG is trading
+};
+/* ============================================================ */
+
+function applyConfig(){
+  const contractEl = document.getElementById("token-contract");
+  const statusEl = document.getElementById("token-status");
+  const linksRow = document.getElementById("token-links-row");
+
+  statusEl.textContent = CONFIG.STATUS_TEXT;
+
+  if(CONFIG.CONTRACT_ADDRESS){
+    contractEl.textContent = shortAddr(CONFIG.CONTRACT_ADDRESS);
+    contractEl.style.cursor = "pointer";
+    contractEl.title = "Click to copy full address";
+    contractEl.onclick = () => {
+      navigator.clipboard.writeText(CONFIG.CONTRACT_ADDRESS);
+      contractEl.textContent = "Copied ✓";
+      setTimeout(()=>{ contractEl.textContent = shortAddr(CONFIG.CONTRACT_ADDRESS); }, 1500);
+    };
+  }
+
+  const links = [];
+  if(CONFIG.BUY_LINK) links.push(`<button class="btn-secondary primary" onclick="window.open('${CONFIG.BUY_LINK}','_blank')">Buy $BAG</button>`);
+  if(CONFIG.TWITTER_LINK) links.push(`<button class="btn-secondary" onclick="window.open('${CONFIG.TWITTER_LINK}','_blank')">Follow on X</button>`);
+  if(CONFIG.TELEGRAM_LINK) links.push(`<button class="btn-secondary" onclick="window.open('${CONFIG.TELEGRAM_LINK}','_blank')">Join Telegram</button>`);
+  if(links.length){ linksRow.innerHTML = links.join(""); linksRow.style.display = "flex"; }
+}
+
+function handleBuyClick(){
+  if(CONFIG.BUY_LINK){ window.open(CONFIG.BUY_LINK, "_blank"); }
+  else{ document.getElementById("token").scrollIntoView({behavior:"smooth"}); }
+}
+
+const SOL_MINT = "So11111111111111111111111111111111111111";
+const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+
+function shortAddr(a){ return a.slice(0,4) + "…" + a.slice(-4); }
+function isValidSolanaAddress(addr){
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr);
+}
+function fmtUsd(n){
+  if(n === null || n === undefined || isNaN(n)) return "—";
+  if(n >= 1000) return "$" + n.toLocaleString(undefined,{maximumFractionDigits:0});
+  return "$" + n.toLocaleString(undefined,{maximumFractionDigits:2});
+}
+
+async function rpcCall(method, params){
+  const res = await fetch(CONFIG.RPC_URL, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({jsonrpc:"2.0", id:1, method, params})
+  });
+  if(!res.ok) throw new Error("RPC request failed");
+  const json = await res.json();
+  if(json.error) throw new Error(json.error.message || "RPC error");
+  return json.result;
+}
+
+async function getTokenMeta(mint){
+  try{
+    const res = await fetch("https://tokens.jup.ag/token/" + mint);
+    if(!res.ok) return null;
+    return await res.json();
+  }catch(e){ return null; }
+}
+
+async function getPrices(ids){
+  try{
+    const res = await fetch("https://api.jup.ag/price/v2?ids=" + ids.join(","));
+    if(!res.ok) return {};
+    const json = await res.json();
+    return json.data || {};
+  }catch(e){ return {}; }
+}
+
+function setError(msg){
+  const box = document.getElementById("error-box");
+  if(!msg){ box.style.display="none"; box.textContent=""; return; }
+  box.style.display="block";
+  box.textContent = msg;
+}
+
+async function analyzeWallet(){
+  const input = document.getElementById("wallet-input");
+  const addr = input.value.trim();
+  const btn = document.getElementById("check-btn");
+  setError(null);
+
+  if(!addr){ setError("Paste a wallet address first."); return; }
+  if(!isValidSolanaAddress(addr)){ setError("❌ That's not a valid Solana wallet address."); return; }
+
+  btn.disabled = true;
+  btn.textContent = "🔍 ANALYZING...";
+
+  try{
+    // 1. SOL balance
+    const balanceLamports = await rpcCall("getBalance", [addr]);
+    const solBalance = balanceLamports / 1e9;
+
+    // 2. Token accounts
+    const tokenAccountsResult = await rpcCall("getTokenAccountsByOwner", [
+      addr,
+      { programId: TOKEN_PROGRAM_ID },
+      { encoding: "jsonParsed" }
+    ]);
+
+    let holdings = (tokenAccountsResult.value || [])
+      .map(acc => acc.account.data.parsed.info)
+      .filter(info => info.tokenAmount.uiAmount && info.tokenAmount.uiAmount > 0)
+      .map(info => ({ mint: info.mint, amount: info.tokenAmount.uiAmount }));
+
+    // cap to avoid overload
+    holdings = holdings.slice(0, 60);
+
+    // 3. Activity signal
+    let sigCount = 0;
+    try{
+      const sigs = await rpcCall("getSignaturesForAddress", [addr, {limit:50}]);
+      sigCount = sigs.length;
+    }catch(e){ sigCount = 0; }
+
+    // 4. Prices
+    const idsToPrice = [SOL_MINT, ...holdings.map(h=>h.mint)].slice(0,100);
+    const priceData = await getPrices(idsToPrice);
+    const solPrice = priceData[SOL_MINT] ? parseFloat(priceData[SOL_MINT].price) : null;
+
+    holdings.forEach(h=>{
+      const p = priceData[h.mint];
+      h.price = p ? parseFloat(p.price) : null;
+      h.value = h.price !== null ? h.price * h.amount : null;
+    });
+
+    const solValue = solPrice !== null ? solPrice * solBalance : null;
+    const pricedHoldings = holdings.filter(h=>h.value !== null && h.value > 0.01).sort((a,b)=>b.value-a.value);
+    const unpricedCount = holdings.length - pricedHoldings.length;
+
+    // 5. Metadata for top holdings only
+    const topHoldings = pricedHoldings.slice(0,8);
+    await Promise.all(topHoldings.map(async h=>{
+      const meta = await getTokenMeta(h.mint);
+      h.symbol = meta && meta.symbol ? meta.symbol : shortAddr(h.mint);
+    }));
+
+    const knownValue = (solValue || 0) + pricedHoldings.reduce((s,h)=>s+h.value,0);
+    const totalHoldingsCount = holdings.length;
+
+    renderResults({
+      addr, solBalance, solPrice, solValue,
+      pricedHoldings, topHoldings, unpricedCount,
+      totalHoldingsCount, knownValue, sigCount
+    });
+
+    document.getElementById("results").style.display = "block";
+    document.getElementById("results").scrollIntoView({behavior:"smooth"});
+
+  }catch(err){
+    console.error(err);
+    setError("⚠️ Couldn't fetch that wallet right now — Solana's public RPC may be rate-limited. Wait a few seconds and try again.");
+  }finally{
+    btn.disabled = false;
+    btn.textContent = "CHECK MY BAG →";
+  }
+}
+
+let lastResult = null;
+
+function renderResults(d){
+  lastResult = d;
+
+  const solPct = d.knownValue > 0 ? (d.solValue||0)/d.knownValue*100 : 0;
+  const items = [];
+  if(d.solValue) items.push({name:"SOL", pct:solPct, value:d.solValue});
+  d.topHoldings.forEach(h=>{
+    items.push({name:h.symbol, pct: d.knownValue>0 ? h.value/d.knownValue*100 : 0, value:h.value});
+  });
+  const shownTotal = items.reduce((s,i)=>s+i.pct,0);
+  const othersPct = Math.max(0, 100 - shownTotal);
+
+  const biggestPct = items.length ? Math.max(...items.map(i=>i.pct)) : 0;
+
+  // ---- Scoring ----
+  const diversificationScore = Math.min(d.totalHoldingsCount, 10) / 10 * 20;
+  let concentrationScore;
+  if(biggestPct > 80) concentrationScore = 4;
+  else if(biggestPct > 50) concentrationScore = 10;
+  else if(biggestPct > 30) concentrationScore = 16;
+  else concentrationScore = 20;
+
+  let solAllocScore;
+  if(solPct >= 20 && solPct <= 70) solAllocScore = 15;
+  else if(solPct >= 5 && solPct < 20) solAllocScore = 9;
+  else if(solPct > 70 && solPct <= 90) solAllocScore = 9;
+  else solAllocScore = 4;
+
+  const activityScore = Math.min(d.sigCount, 50) / 50 * 15;
+
+  const riskyRatio = d.totalHoldingsCount > 0 ? d.unpricedCount / d.totalHoldingsCount : 0;
+  const portfolioRiskScore = Math.max(0, 15 - riskyRatio * 15);
+
+  const overallHealthScore = ((diversificationScore/20)+(concentrationScore/20)+(solAllocScore/15)+(portfolioRiskScore/15))/4 * 15;
+
+  const total = Math.round(diversificationScore + concentrationScore + solAllocScore + activityScore + portfolioRiskScore + overallHealthScore);
+
+  let tier, tierDesc;
+  if(total >= 90){ tier="🧠 WALLET WIZARD"; tierDesc="You know exactly what you're doing. Suspiciously so."; }
+  else if(total >= 75){ tier="😎 SOLID BAG"; tierDesc="Your bag isn't perfect, but we've seen worse."; }
+  else if(total >= 50){ tier="👜 BAG HOLDER"; tierDesc="You're holding on. That's basically a strategy."; }
+  else if(total >= 25){ tier="💀 CERTIFIED BAGHOLDER"; tierDesc="It's not a loss if you never sell. Right?"; }
+  else{ tier="☠️ EXIT LIQUIDITY"; tierDesc="Someone had to be on the other side of these trades."; }
+
+  document.getElementById("score-value").innerHTML = total + "<span>/100</span>";
+  document.getElementById("score-tier").textContent = tier;
+  document.getElementById("score-desc").textContent = tierDesc;
+  document.getElementById("wallet-chip").textContent = shortAddr(d.addr);
+
+  document.getElementById("stat-value").textContent = d.knownValue > 0 ? fmtUsd(d.knownValue) + (d.unpricedCount>0 ? "+" : "") : "—";
+  document.getElementById("stat-sol").textContent = d.solBalance.toFixed(2) + " SOL";
+  document.getElementById("stat-tokens").textContent = d.totalHoldingsCount;
+  document.getElementById("stat-biggest").textContent = biggestPct > 0 ? Math.round(biggestPct) + "%" : "—";
+
+  // breakdown bars
+  const barsEl = document.getElementById("breakdown-bars");
+  barsEl.innerHTML = "";
+  const sortedItems = [...items].sort((a,b)=>b.pct-a.pct);
+  sortedItems.forEach(it=>{
+    barsEl.innerHTML += `<div class="bar-row">
+      <div class="name">${it.name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.min(it.pct,100)}%"></div></div>
+      <div class="bar-pct">${it.pct.toFixed(1)}%</div>
+    </div>`;
+  });
+  if(othersPct > 0.5){
+    barsEl.innerHTML += `<div class="bar-row">
+      <div class="name">OTHERS</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.min(othersPct,100)}%; opacity:0.5"></div></div>
+      <div class="bar-pct">${othersPct.toFixed(1)}%</div>
+    </div>`;
+  }
+  if(sortedItems.length === 0){
+    barsEl.innerHTML = `<p style="color:var(--text-faint); font-size:13.5px;">No priced holdings found for this wallet.</p>`;
+  }
+
+  // bag health
+  const healthEl = document.getElementById("health-grid");
+  function pillClass(score, max){ const r=score/max; return r>0.66?"good":r>0.33?"warn":"bad"; }
+  healthEl.innerHTML = `
+    <div class="health-item"><div class="label">Diversification</div><div class="val">${Math.round(diversificationScore/20*100)}/100</div></div>
+    <div class="health-item"><div class="label">Concentration</div><div class="val"><span class="pill ${biggestPct>60?'bad':biggestPct>30?'warn':'good'}">${biggestPct>60?'HIGH':biggestPct>30?'MEDIUM':'LOW'}</span></div></div>
+    <div class="health-item"><div class="label">SOL Allocation</div><div class="val"><span class="pill ${solAllocScore>=12?'good':solAllocScore>=8?'warn':'bad'}">${solAllocScore>=12?'GOOD':solAllocScore>=8?'OK':'SKEWED'}</span></div></div>
+    <div class="health-item"><div class="label">Overall Risk</div><div class="val"><span class="pill ${portfolioRiskScore>=10?'good':portfolioRiskScore>=5?'warn':'bad'}">${portfolioRiskScore>=10?'LOW':portfolioRiskScore>=5?'MEDIUM':'HIGH'}</span></div></div>
+  `;
+
+  // roast
+  const roastLines = [];
+  roastLines.push(`${d.totalHoldingsCount} TOKENS? ${d.unpricedCount > 3 ? Math.max(0,d.unpricedCount-1) + " of those don't even have a price feed." : "At least most of them show up on a price chart."}`);
+  roastLines.push(`Your biggest bag controls ${Math.round(biggestPct)}% of your portfolio.`);
+  roastLines.push(`Diversification: ${diversificationScore>14?'✅':'❌'}`);
+  roastLines.push(`Conviction: ${biggestPct>60?'🔥':'😐'}`);
+  roastLines.push(`Risk management: ${portfolioRiskScore<7?'💀':portfolioRiskScore<11?'😬':'✅'}`);
+  document.getElementById("roast-lines").innerHTML = roastLines.map(l=>`<div>${l}</div>`).join("");
+  document.getElementById("roast-verdict").innerHTML =
+    total < 40 ? "VERDICT<br>You don't have a portfolio. You have unresolved feelings." :
+    total < 70 ? "VERDICT<br>Not bad. Not great. Very Solana." :
+    "VERDICT<br>Okay wallet wizard, teach us your ways.";
+
+  window.__bagScoreState = {total, tier, addr:d.addr, value:d.knownValue, tokens:d.totalHoldingsCount, biggestPct: Math.round(biggestPct)};
+}
+
+function downloadShareCard(){
+  if(!window.__bagScoreState) return;
+  const s = window.__bagScoreState;
+  const canvas = document.getElementById("share-canvas");
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+
+  const grad = ctx.createLinearGradient(0,0,W,H);
+  grad.addColorStop(0,"#050507");
+  grad.addColorStop(1,"#0c0c18");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,W,H);
+
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(24,24,W-48,H-48);
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#8d90ac";
+  ctx.font = "600 28px Inter, sans-serif";
+  ctx.fillText("BAGSCORE SOL", W/2, 140);
+
+  const scoreGrad = ctx.createLinearGradient(0,200,W,400);
+  scoreGrad.addColorStop(0,"#39f2e0");
+  scoreGrad.addColorStop(1,"#a855f7");
+  ctx.fillStyle = scoreGrad;
+  ctx.font = "700 220px 'Space Grotesk', sans-serif";
+  ctx.fillText(String(s.total), W/2, 400);
+  ctx.fillStyle = "#5c5f78";
+  ctx.font = "600 40px Inter, sans-serif";
+  ctx.fillText("/ 100", W/2, 460);
+
+  ctx.fillStyle = "#eef0fb";
+  ctx.font = "600 44px 'Space Grotesk', sans-serif";
+  ctx.fillText(s.tier, W/2, 550);
+
+  ctx.strokeStyle = "rgba(255,255,255,0.1)";
+  ctx.beginPath(); ctx.moveTo(120,610); ctx.lineTo(W-120,610); ctx.stroke();
+
+  const rowY = 680;
+  const cols = [
+    ["PORTFOLIO", s.value ? fmtUsd(s.value) : "—"],
+    ["TOKENS", String(s.tokens)],
+    ["BIGGEST BAG", s.biggestPct + "%"]
+  ];
+  const colW = (W-240)/3;
+  cols.forEach((c,i)=>{
+    const cx = 120 + colW*i + colW/2;
+    ctx.fillStyle = "#5c5f78";
+    ctx.font = "500 22px Inter, sans-serif";
+    ctx.fillText(c[0], cx, rowY);
+    ctx.fillStyle = "#eef0fb";
+    ctx.font = "700 34px 'Space Grotesk', sans-serif";
+    ctx.fillText(c[1], cx, rowY+46);
+  });
+
+  ctx.fillStyle = "#39f2e0";
+  ctx.font = "700 30px 'Space Grotesk', sans-serif";
+  ctx.fillText("HOW BAD IS YOUR BAG?", W/2, 880);
+  ctx.fillStyle = "#5c5f78";
+  ctx.font = "500 24px Inter, sans-serif";
+  ctx.fillText("BagScoreSol.com", W/2, 924);
+
+  const link = document.createElement("a");
+  link.download = "bagscore-" + s.total + ".png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+function shareOnX(){
+  if(!window.__bagScoreState) return;
+  const s = window.__bagScoreState;
+  const text = `My Bag Score is ${s.total}/100 (${s.tier}) 👜\n\nHow bad is your bag? Find out at BagScoreSol.com`;
+  window.open("https://twitter.com/intent/tweet?text=" + encodeURIComponent(text), "_blank");
+}
+
+document.getElementById("wallet-input").addEventListener("keydown", e=>{
+  if(e.key === "Enter") analyzeWallet();
+});
+
+applyConfig();
+</script>
+</body>
+</html>
