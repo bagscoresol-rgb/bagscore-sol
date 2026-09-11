@@ -358,7 +358,7 @@
         <canvas id="share-canvas" width="1000" height="1000"></canvas>
       </div>
 
-      <div class="note-line">Winners/losers require historical cost-basis data we can't verify on-chain yet — so we're not showing made-up P&L. Current holdings and pricing above are live.</div>
+      <div class="note-line">Winners/losers require historical cost-basis data we can't verify on-chain yet — so we're not showing made-up P&L. Current holdings and available pricing above are live.</div>
     </div>
   </section>
 
@@ -412,12 +412,11 @@
    in, save, re-upload to Vercel. That's it.
    ============================================================ */
 const CONFIG = {
-  RPC_URL: "https://mainnet.helius-rpc.com/?api-key=92a6cf9d-b7fa-4800-9ca5-f10f03005253", // swap to your Helius/QuickNode URL when the free public RPC gets rate-limited
-  CONTRACT_ADDRESS: "",      // paste the $BAG mint address, e.g. "7xKXtg2CW87..."
-  BUY_LINK: "",              // Jupiter/Raydium swap link once there's liquidity
+  CONTRACT_ADDRESS: "",
+  BUY_LINK: "",
   TWITTER_LINK: "https://twitter.com/BagScoreSOL",
-  TELEGRAM_LINK: "",         // optional — leave blank to hide the button
-  STATUS_TEXT: "Pre-launch"  // change to "Live" once $BAG is trading
+  TELEGRAM_LINK: "",
+  STATUS_TEXT: "Pre-launch"
 };
 /* ============================================================ */
 
@@ -464,33 +463,34 @@ function fmtUsd(n){
   return "$" + n.toLocaleString(undefined,{maximumFractionDigits:2});
 }
 
-async function rpcCall(method, params){
-  const res = await fetch(CONFIG.RPC_URL, {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({jsonrpc:"2.0", id:1, method, params})
-  });
-  if(!res.ok) throw new Error("RPC request failed");
-  const json = await res.json();
-  if(json.error) throw new Error(json.error.message || "RPC error");
-  return json.result;
-}
+async function analyzeWalletRequest(addr){
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25000);
 
-async function getTokenMeta(mint){
   try{
-    const res = await fetch("https://tokens.jup.ag/token/" + mint);
-    if(!res.ok) return null;
-    return await res.json();
-  }catch(e){ return null; }
-}
+    const res = await fetch("/api/analyze", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ address: addr }),
+      signal: controller.signal
+    });
 
-async function getPrices(ids){
-  try{
-    const res = await fetch("https://api.jup.ag/price/v2?ids=" + ids.join(","));
-    if(!res.ok) return {};
-    const json = await res.json();
-    return json.data || {};
-  }catch(e){ return {}; }
+    let json = {};
+    try { json = await res.json(); } catch(e) {}
+
+    if(!res.ok){
+      throw new Error(json.error || `Server error (${res.status})`);
+    }
+
+    return json;
+  }catch(e){
+    if(e.name === "AbortError"){
+      throw new Error("Analysis timed out. Please try again.");
+    }
+    throw e;
+  }finally{
+    clearTimeout(timeout);
+  }
 }
 
 function setError(msg){
@@ -513,69 +513,15 @@ async function analyzeWallet(){
   btn.textContent = "🔍 ANALYZING...";
 
   try{
-    // 1. SOL balance
-    const balanceLamports = await rpcCall("getBalance", [addr]);
-    const solBalance = balanceLamports / 1e9;
+    const d = await analyzeWalletRequest(addr);
 
-    // 2. Token accounts
-    const tokenAccountsResult = await rpcCall("getTokenAccountsByOwner", [
-      addr,
-      { programId: TOKEN_PROGRAM_ID },
-      { encoding: "jsonParsed" }
-    ]);
-
-    let holdings = (tokenAccountsResult.value || [])
-      .map(acc => acc.account.data.parsed.info)
-      .filter(info => info.tokenAmount.uiAmount && info.tokenAmount.uiAmount > 0)
-      .map(info => ({ mint: info.mint, amount: info.tokenAmount.uiAmount }));
-
-    // cap to avoid overload
-    holdings = holdings.slice(0, 60);
-
-    // 3. Activity signal
-    let sigCount = 0;
-    try{
-      const sigs = await rpcCall("getSignaturesForAddress", [addr, {limit:50}]);
-      sigCount = sigs.length;
-    }catch(e){ sigCount = 0; }
-
-    // 4. Prices
-    const idsToPrice = [SOL_MINT, ...holdings.map(h=>h.mint)].slice(0,100);
-    const priceData = await getPrices(idsToPrice);
-    const solPrice = priceData[SOL_MINT] ? parseFloat(priceData[SOL_MINT].price) : null;
-
-    holdings.forEach(h=>{
-      const p = priceData[h.mint];
-      h.price = p ? parseFloat(p.price) : null;
-      h.value = h.price !== null ? h.price * h.amount : null;
-    });
-
-    const solValue = solPrice !== null ? solPrice * solBalance : null;
-    const pricedHoldings = holdings.filter(h=>h.value !== null && h.value > 0.01).sort((a,b)=>b.value-a.value);
-    const unpricedCount = holdings.length - pricedHoldings.length;
-
-    // 5. Metadata for top holdings only
-    const topHoldings = pricedHoldings.slice(0,8);
-    await Promise.all(topHoldings.map(async h=>{
-      const meta = await getTokenMeta(h.mint);
-      h.symbol = meta && meta.symbol ? meta.symbol : shortAddr(h.mint);
-    }));
-
-    const knownValue = (solValue || 0) + pricedHoldings.reduce((s,h)=>s+h.value,0);
-    const totalHoldingsCount = holdings.length;
-
-    renderResults({
-      addr, solBalance, solPrice, solValue,
-      pricedHoldings, topHoldings, unpricedCount,
-      totalHoldingsCount, knownValue, sigCount
-    });
+    renderResults(d);
 
     document.getElementById("results").style.display = "block";
     document.getElementById("results").scrollIntoView({behavior:"smooth"});
-
   }catch(err){
     console.error(err);
-    setError("⚠️ Couldn't fetch that wallet right now — Solana's public RPC may be rate-limited. Wait a few seconds and try again.");
+    setError("⚠️ " + (err.message || "Couldn't analyze this wallet right now."));
   }finally{
     btn.disabled = false;
     btn.textContent = "CHECK MY BAG →";
